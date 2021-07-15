@@ -16,13 +16,12 @@ def test(model_path, output_dir, test_loader, addNDVI):
     if(addNDVI):
         in_channels += 1
 
-    model = smp.DeepLabV3Plus(
-            encoder_name="resnet101",
+    model = smp.UnetPlusPlus(
+            encoder_name="resnet101e",
             encoder_weights="imagenet",
             in_channels=in_channels,
             classes=8,
     )
-    # 如果模型是SWA
     if("swa" in model_path):
         model = AveragedModel(model)
     model.to(DEVICE);
@@ -40,15 +39,15 @@ def test(model_path, output_dir, test_loader, addNDVI):
             pred = output[i]
             pred = np.argmax(pred, axis = 0) + 1
             pred = np.uint8(pred)
-            save_path = os.path.join(output_dir, image_path[i][-10:].replace('.tif', '.png'))
+            save_path = os.path.join(output_dir, image_path[i].replace('.tif', '.png'))
             print(save_path)
             cv2.imwrite(save_path, pred)
         
 if __name__ == "__main__":
     start_time = time.time()
-    model_path_resnest = "../user_data/model_data/unetplusplus_resnest_upsample_SoftCE_dice.pth"
+    model_path_resnest = "../user_data/model_data/unetplusplus_resnest_upsample_lsce_dc_loss.pth"
     output_dir = '../prediction_result'  
-    test_image_paths = glob.glob('../tcdata/suichang_round1_test_partA_210120/*.tif')
+    test_image_paths = glob.glob('../tcdata/Sentinel2A_15bands_256_128model/*.tif')
     addNDVI = False
     batch_size = 16
     num_workers = 8
