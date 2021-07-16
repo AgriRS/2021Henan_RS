@@ -4,9 +4,10 @@ import gdal
 import random
 import numpy as np
 import torch
-
+import torch.nn.functional as F
 # !----------  train过程中的数据处理 ---------------！#
-
+tensor =  torch.arange(0, 5) % 3  # tensor([0, 1, 2, 0, 1])
+one_hot = F.one_hot(tensor)
 DEVICE = 'cuda:0' if torch.cuda.is_available() else 'cpu' 
 
 #  读取图像像素矩阵
@@ -99,7 +100,7 @@ def cal_val_iou(model, loader):
     return val_iou
 
 # 计算IoU
-def cal_iou(pred, mask, c=8):
+def cal_iou(pred, mask, c=2):
     iou_result = []
     for idx in range(c):
         p = (mask == idx).int().reshape(-1)
@@ -112,7 +113,7 @@ def cal_iou(pred, mask, c=8):
     return np.stack(iou_result)
 
 class OurDataset(D.Dataset):
-    def __init__(self, image_paths, label_paths, mode, addNDVI = True):
+    def __init__(self, image_paths, label_paths, mode, addNDVI = False):
         self.image_paths = image_paths
         self.label_paths = label_paths
         self.mode = mode
@@ -139,7 +140,7 @@ class OurDataset(D.Dataset):
             return self.as_tensor(image_array), label.astype(np.int64)
         elif self.mode == "test":   
             image_stretch = truncated_linear_stretch(image, 0.5)
-            image_ndvi = imgread(self.image_paths[index], True)
+            image_ndvi = imgread(self.image_paths[index], False)
             nir, r = image_ndvi[:,:,3], image_ndvi[:,:,0]
             ndvi = (nir - r) / (nir + r + 0.00001) * 1.0
             return self.as_tensor(image), self.as_tensor(image_stretch), self.image_paths[index], ndvi
@@ -169,6 +170,7 @@ def split_train_val(image_paths, label_paths, val_index=0, upsample = True):
         for i, train_label_path in enumerate(train_label_paths):
             label = imgread(train_label_path)
             label = np.unique(label)
+
             #print(i,len(train_label_paths),label)
             upsample_num = 2
             # 若包含少类，上采样2份,38和10因为得分太低，采取放弃策略；4因为几乎每张影像都有，采取放弃策略
@@ -184,3 +186,4 @@ def split_train_val(image_paths, label_paths, val_index=0, upsample = True):
         print("Number of train images after upsample: ", len(train_image_paths))
         print("Number of val images after upsample: ", len(val_image_paths))  
     return train_image_paths, train_label_paths, val_image_paths, val_label_paths
+
